@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Interativo - Processo Seletivo CAMIM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #2a9d8f, #264653);
+        }
+        
+        .quiz-card {
+            background-color: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease-in-out;
+        }
+
+        .option-btn {
+            transition: all 0.2s ease-in-out;
+            border: 2px solid transparent;
+        }
+
+        .option-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .option-btn.correct {
+            background-color: #2a9d8f !important;
+            color: white !important;
+            border-color: #264653;
+        }
+
+        .option-btn.incorrect {
+            background-color: #e76f51 !important;
+            color: white !important;
+            border-color: #f4a261;
+        }
+        
+        #progress-bar-inner {
+            transition: width 0.5s ease-in-out;
+        }
+        
+        .question-container.fade-out {
+            opacity: 0;
+            transform: scale(0.95);
+            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+        }
+
+        .question-container.fade-in {
+            opacity: 1;
+            transform: scale(1);
+            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div id="quiz-app" class="quiz-card w-full max-w-2xl p-6 md:p-8">
+        
+        <!-- Start Screen -->
+        <div id="start-screen">
+            <h1 class="text-2xl md:text-3xl font-bold text-center text-[#264653] mb-2">Quiz: Processo Seletivo CAMIM 🧐</h1>
+            <p class="text-center text-gray-600 mb-8">Digite seu nome COMPLETO para iniciar o teste.</p>
+            <div class="flex flex-col gap-4">
+                <input type="text" id="name-input" placeholder="Seu nome completo" class="w-full p-3 border border-gray-300 rounded-lg text-center focus:ring-2 focus:ring-[#2a9d8f] focus:border-transparent transition">
+                <button id="start-btn" class="bg-[#264653] hover:bg-[#2a9d8f] text-white font-bold py-3 px-10 rounded-full shadow-lg transform hover:scale-105 transition-transform duration-200">
+                    Começar Quiz 🚀
+                </button>
+            </div>
+             <p id="name-error" class="text-red-500 text-center mt-2 h-4"></p>
+        </div>
+
+        <!-- Quiz Container -->
+        <div id="quiz-container" class="hidden">
+            <!-- Header -->
+            <div class="mb-6">
+                <h1 class="text-2xl md:text-3xl font-bold text-center text-[#264653] mb-2">Quiz: Processo Seletivo Camim 🧐</h1>
+                <p class="text-center text-gray-600">Teste seus conhecimentos sobre a condução de seleções.</p>
+            </div>
+
+            <!-- Progress Bar -->
+            <div id="progress-container" class="w-full bg-gray-200 rounded-full h-2.5 mb-6">
+                <div id="progress-bar-inner" class="bg-[#2a9d8f] h-2.5 rounded-full" style="width: 0%"></div>
+            </div>
+
+            <!-- Question Area -->
+            <div id="question-area">
+                <div id="question-container" class="text-center question-container fade-in">
+                    <h2 id="question-text" class="text-lg md:text-xl font-semibold text-gray-800 mb-2"></h2>
+                    <p id="question-emoji" class="text-4xl mb-6"></p>
+                    <div id="options-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Options will be injected here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Feedback and Controls -->
+            <div id="controls-area" class="mt-8 text-center">
+                <p id="feedback-text" class="font-semibold h-6 mb-4"></p>
+                <button id="next-btn" class="bg-[#e76f51] hover:bg-[#f4a261] text-white font-bold py-2 px-8 rounded-full shadow-lg transform hover:scale-105 transition-transform duration-200 hidden">
+                    Próxima Pergunta &rarr;
+                </button>
+            </div>
+        </div>
+
+        <!-- Results Screen -->
+        <div id="results-screen" class="hidden text-center">
+             <p id="result-emoji" class="text-6xl mb-4"></p>
+            <h2 class="text-2xl font-bold text-[#264653] mb-2">Quiz Finalizado!</h2>
+            <p id="score-text" class="text-lg text-gray-700 mb-2"></p>
+            <p id="result-message" class="text-gray-600 mb-8"></p>
+            <button id="restart-btn" class="bg-[#264653] hover:bg-[#2a9d8f] text-white font-bold py-3 px-10 rounded-full shadow-lg transform hover:scale-105 transition-transform duration-200">
+                Responder Novamente 🔁
+            </button>
+        </div>
+
+        <!-- Leaderboard -->
+        <div id="leaderboard" class="hidden mt-8">
+            <h3 class="text-xl font-bold text-center text-[#264653] mb-4">🏆 Placar de Líderes 🏆</h3>
+            <div id="leaderboard-list" class="space-y-2 max-h-60 overflow-y-auto pr-2">
+                <!-- Scores will be dynamically inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+        // --- PASSO 7: COLE SUA URL DO GOOGLE APPS SCRIPT AQUI ---
+        // Siga as instruções no arquivo 'instructions.md' para obter esta URL.
+        const GOOGLE_SHEET_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbw3eaR49Ua3XgOvLRf9eSXaSVnzCvJFNI6GceP6SrLKy3HuhS8cdv0VN1BoBe7783RJTA/exec';
+
+        // --- FIREBASE CONFIGURATION ---
+        let db;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        
+        try {
+            const firebaseConfig = typeof __firebase_config !== 'undefined' 
+                ? JSON.parse(__firebase_config) 
+                : { apiKey: "YOUR_API_KEY", authDomain: "YOUR_AUTH_DOMAIN", projectId: "YOUR_PROJECT_ID" }; // Fallback for local testing
+            
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            const auth = getAuth(app);
+            
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    console.log("User is authenticated:", user.uid);
+                    loadLeaderboard();
+                } else {
+                    // No user, attempt to sign in.
+                    (async () => {
+                        try {
+                            const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+                            if (initialAuthToken) {
+                                await signInWithCustomToken(auth, initialAuthToken);
+                                console.log("Attempted sign in with custom token.");
+                            } else {
+                                await signInAnonymously(auth);
+                                console.log("Attempted sign in anonymously.");
+                            }
+                        } catch (error) {
+                             console.error("Sign-in failed:", error);
+                        }
+                    })();
+                }
+            });
+
+        } catch (e) {
+            console.error("Firebase initialization failed:", e);
+        }
+
+        const quizData = [
+            {
+                question: "Qual o foco principal da etapa de 'Apresentação dos Candidatos'?",
+                emoji: "👥",
+                options: [
+                    "Apenas quebrar o gelo e integrar", 
+                    "Avaliar hard skills e experiência técnica", 
+                    "Avaliar adequação cultural e perfil comportamental", 
+                    "Verificar referências profissionais"
+                ],
+                answer: "Avaliar adequação cultural e perfil comportamental"
+            },
+            {
+                question: "Como os questionários de perfil (DISC, GP5) devem ser apresentados aos candidatos?",
+                emoji: "📝",
+                options: [
+                    "Como 'Teste Psicológico'", 
+                    "Como 'Prova Eliminatória'", 
+                    "Como 'Questionário de Perfil' ou 'Instrumento de Autoconhecimento'", 
+                    "Como 'Avaliação de QI'"
+                ],
+                answer: "Como 'Questionário de Perfil' ou 'Instrumento de Autoconhecimento'"
+            },
+            {
+                question: "O que é obrigatório saber antes de conduzir uma Dinâmica de Grupo?",
+                emoji: "🤝",
+                options: [
+                    "O nome de todos os candidatos", 
+                    "Qual competência a dinâmica visa avaliar", 
+                    "O salário da vaga em questão", 
+                    "O resultado dos questionários de perfil"
+                ],
+                answer: "Qual competência a dinâmica visa avaliar"
+            },
+            {
+                question: "Durante a 'Visita Guiada ao Posto', o que deve ser evitado?",
+                emoji: "🚶‍♀️",
+                options: [
+                    "Mostrar a rotina de trabalho", 
+                    "Apresentar a equipe", 
+                    "Conversas confidenciais e exposição de colaboradores", 
+                    "Reforçar a cultura da Camim"
+                ],
+                answer: "Conversas confidenciais e exposição de colaboradores"
+            },
+            {
+                question: "Qual o foco principal do 'Fechamento do Processo'?",
+                emoji: "🏁",
+                options: [
+                    "Apenas informar o salário", 
+                    "Experiência do Candidato (Candidate Experience) e Ética", 
+                    "Agendar a próxima etapa rapidamente", 
+                    "Coletar documentos para a contratação"
+                ],
+                answer: "Experiência do Candidato (Candidate Experience) e Ética"
+            },
+            {
+                question: "Qual o objetivo de usar técnicas de rapport e quebra-gelo na apresentação do recrutador?",
+                emoji: "🎤",
+                options: [
+                    "Apressar o processo seletivo", 
+                    "Deixar o candidato nervoso", 
+                    "Estabelecer confiança e transmitir credibilidade", 
+                    "Avaliar o senso de humor do candidato"
+                ],
+                answer: "Estabelecer confiança e transmitir credibilidade"
+            },
+            {
+                question: "O que significa 'Employer Branding' no contexto da apresentação da Camim?",
+                emoji: "🏢",
+                options: [
+                    "As regras de vestimenta da empresa", 
+                    "O logotipo e as cores da marca", 
+                    "A forma como os produtos são vendidos", 
+                    "Transmitir a 'marca empregadora' de forma genuína"
+                ],
+                answer: "Transmitir a 'marca empregadora' de forma genuína"
+            },
+             {
+                question: "Ao aplicar questionários, o que é essencial garantir em relação ao ambiente?",
+                emoji: "쾌",
+                options: [
+                    "Que haja música ambiente para relaxar",
+                    "Que seja padronizado, silencioso e com conforto térmico",
+                    "Que outros candidatos possam ajudar nas respostas",
+                    "Que o tempo seja o mais curto possível"
+                ],
+                answer: "Que seja padronizado, silencioso e com conforto térmico"
+            },
+            {
+                question: "Na dinâmica de grupo, quem são os responsáveis pela observação do comportamento?",
+                emoji: "🧐",
+                options: [
+                    "Apenas o facilitador",
+                    "Os próprios candidatos",
+                    "O facilitador e os observadores com pautas",
+                    "O gestor da área, remotamente"
+                ],
+                answer: "O facilitador e os observadores com pautas"
+            },
+            {
+                question: "No final do processo, por que é importante o 'agradecimento genuíno'?",
+                emoji: "🙏",
+                options: [
+                    "Para cumprir uma formalidade",
+                    "Para garantir que o candidato aceite a oferta",
+                    "Para reforçar o interesse e valorizar a participação do candidato",
+                    "Para obter indicações de outros profissionais"
+                ],
+                answer: "Para reforçar o interesse e valorizar a participação do candidato"
+            }
+        ];
+
+        // Element references
+        const startScreen = document.getElementById('start-screen');
+        const nameInput = document.getElementById('name-input');
+        const startBtn = document.getElementById('start-btn');
+        const nameError = document.getElementById('name-error');
+        const quizAppContainer = document.getElementById('quiz-app');
+        const quizContainer = document.getElementById('quiz-container');
+        const questionArea = document.getElementById('question-area');
+        const questionContainer = document.getElementById('question-container');
+        const questionText = document.getElementById('question-text');
+        const questionEmoji = document.getElementById('question-emoji');
+        const optionsContainer = document.getElementById('options-container');
+        const feedbackText = document.getElementById('feedback-text');
+        const nextBtn = document.getElementById('next-btn');
+        const resultsScreen = document.getElementById('results-screen');
+        const scoreText = document.getElementById('score-text');
+        const resultMessage = document.getElementById('result-message');
+        const restartBtn = document.getElementById('restart-btn');
+        const progressBarInner = document.getElementById('progress-bar-inner');
+        const progressContainer = document.getElementById('progress-container');
+        const controlsArea = document.getElementById('controls-area');
+        const resultEmoji = document.getElementById('result-emoji');
+        const leaderboard = document.getElementById('leaderboard');
+        const leaderboardList = document.getElementById('leaderboard-list');
+
+
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let userName = '';
+
+        function startQuiz() {
+            currentQuestionIndex = 0;
+            score = 0;
+            nextBtn.classList.add('hidden');
+            resultsScreen.classList.add('hidden');
+            leaderboard.classList.add('hidden');
+            questionArea.classList.remove('hidden');
+            progressContainer.classList.remove('hidden');
+            controlsArea.classList.remove('hidden');
+            quizContainer.classList.remove('hidden');
+            startScreen.classList.add('hidden');
+            showQuestion();
+        }
+
+        function showQuestion() {
+            // Fade out the current question
+            questionContainer.classList.remove('fade-in');
+            questionContainer.classList.add('fade-out');
+
+            setTimeout(() => {
+                resetState();
+                const currentQuestion = quizData[currentQuestionIndex];
+                questionText.innerText = currentQuestion.question;
+                questionEmoji.innerText = currentQuestion.emoji;
+                
+                currentQuestion.options.forEach(option => {
+                    const button = document.createElement('button');
+                    button.innerText = option;
+                    button.classList.add('option-btn', 'w-full', 'p-3', 'rounded-lg', 'bg-gray-100', 'hover:bg-gray-200', 'text-gray-700', 'font-semibold');
+                    button.addEventListener('click', selectAnswer);
+                    optionsContainer.appendChild(button);
+                });
+
+                updateProgressBar();
+                
+                // Fade in the new question
+                questionContainer.classList.remove('fade-out');
+                questionContainer.classList.add('fade-in');
+
+            }, 300); // Wait for fade-out animation to complete
+        }
+
+        function resetState() {
+            clearStatusClass();
+            nextBtn.classList.add('hidden');
+            feedbackText.innerText = '';
+            while (optionsContainer.firstChild) {
+                optionsContainer.removeChild(optionsContainer.firstChild);
+            }
+        }
+
+        function selectAnswer(e) {
+            const selectedBtn = e.target;
+            const correct = selectedBtn.innerText === quizData[currentQuestionIndex].answer;
+            if (correct) {
+                score++;
+                feedbackText.innerText = 'Resposta Correta! ✅';
+                feedbackText.style.color = '#2a9d8f';
+            } else {
+                feedbackText.innerText = 'Resposta Incorreta! ❌';
+                feedbackText.style.color = '#e76f51';
+            }
+            
+            Array.from(optionsContainer.children).forEach(button => {
+                setStatusClass(button, button.innerText === quizData[currentQuestionIndex].answer);
+                button.disabled = true; // disable all options after one is selected
+            });
+            
+            nextBtn.classList.remove('hidden');
+        }
+
+        function setStatusClass(element, correct) {
+            clearStatusClass(element);
+            if (correct) {
+                element.classList.add('correct');
+            } else {
+                element.classList.add('incorrect');
+            }
+        }
+
+        function clearStatusClass(element) {
+            if (element) {
+                element.classList.remove('correct');
+                element.classList.remove('incorrect');
+            }
+        }
+        
+        function updateProgressBar() {
+            const progressPercentage = ((currentQuestionIndex) / quizData.length) * 100;
+            progressBarInner.style.width = `${progressPercentage}%`;
+        }
+
+
+        async function showResults() {
+            updateProgressBar(); // to fill up the bar at the end
+             setTimeout(() => {
+                progressBarInner.style.width = `100%`;
+            }, 100);
+
+            questionArea.classList.add('hidden');
+            controlsArea.classList.add('hidden');
+            resultsScreen.classList.remove('hidden');
+            leaderboard.classList.remove('hidden');
+            scoreText.innerText = `${userName}, você acertou ${score} de ${quizData.length} perguntas!`;
+
+            let message = '';
+            let emoji = '';
+            const percentage = (score / quizData.length) * 100;
+            if (percentage === 100) {
+                message = "Excelente! Você domina completamente o processo seletivo da Camim. Parabéns!";
+                emoji = "🏆";
+            } else if (percentage >= 70) {
+                message = "Muito bem! Você tem um ótimo conhecimento do processo. Continue assim!";
+                emoji = "🎉";
+            } else if (percentage >= 50) {
+                message = "Bom trabalho! Que tal revisar alguns pontos para aprimorar ainda mais?";
+                emoji = "👍";
+            } else {
+                message = "Continue estudando o material. A prática leva à perfeição!";
+                emoji = "📚";
+            }
+            resultMessage.innerText = message;
+            resultEmoji.innerText = emoji;
+
+            // Save result to Firebase
+            if (db) {
+                try {
+                    const collectionPath = `artifacts/${appId}/public/data/quizResults`;
+                    await addDoc(collection(db, collectionPath), {
+                        name: userName,
+                        score: score,
+                        totalQuestions: quizData.length,
+                        timestamp: new Date()
+                    });
+                    console.log("Result saved successfully to Firestore!");
+                } catch (error) {
+                    console.error("Error saving result to Firestore: ", error);
+                }
+            }
+
+            // Send result to Google Sheets
+            if (GOOGLE_SHEET_WEB_APP_URL && GOOGLE_SHEET_WEB_APP_URL !== 'COLE_A_URL_DA_SUA_WEB_APP_AQUI') {
+                try {
+                    // Usamos 'no-cors' porque o Apps Script não lida bem com requisições complexas (pre-flight)
+                    // por padrão. Os dados serão enviados, mas não receberemos uma resposta de volta no código.
+                    await fetch(GOOGLE_SHEET_WEB_APP_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        cache: 'no-cache',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        redirect: 'follow',
+                        body: JSON.stringify({
+                            name: userName,
+                            score: score,
+                            totalQuestions: quizData.length
+                        })
+                    });
+                    console.log("Result sent to Google Sheet successfully.");
+                } catch (error) {
+                    console.error("Error sending result to Google Sheet: ", error);
+                }
+            }
+        }
+
+        function loadLeaderboard() {
+            if (!db) return;
+
+            const collectionPath = `artifacts/${appId}/public/data/quizResults`;
+            const resultsCollection = collection(db, collectionPath);
+            onSnapshot(resultsCollection, (snapshot) => {
+                const results = [];
+                snapshot.forEach((doc) => {
+                    results.push(doc.data());
+                });
+
+                // Sort results: highest score first, then newest first
+                results.sort((a, b) => {
+                    if (b.score !== a.score) {
+                        return b.score - a.score;
+                    }
+                    return b.timestamp.toMillis() - a.timestamp.toMillis();
+                });
+
+                leaderboardList.innerHTML = ''; // Clear previous list
+                if (results.length > 0) {
+                    results.forEach(result => {
+                        const item = document.createElement('div');
+                        item.className = 'flex justify-between items-center bg-gray-100 p-2 rounded-lg';
+                        const scoreDate = result.timestamp.toDate().toLocaleDateString('pt-BR');
+                        item.innerHTML = `
+                            <div>
+                                <p class="font-semibold text-gray-800">${result.name}</p>
+                                <p class="text-xs text-gray-500">${scoreDate}</p>
+                            </div>
+                            <p class="font-bold text-[#2a9d8f]">${result.score}/${result.totalQuestions}</p>
+                        `;
+                        leaderboardList.appendChild(item);
+                    });
+                } else {
+                     leaderboardList.innerHTML = '<p class="text-center text-gray-500">Nenhum resultado ainda. Seja o primeiro!</p>';
+                }
+            }, (error) => {
+                console.error("Error with snapshot listener:", error);
+                leaderboardList.innerHTML = '<p class="text-center text-red-500">Não foi possível carregar o placar.</p>';
+            });
+        }
+
+        nextBtn.addEventListener('click', () => {
+            currentQuestionIndex++;
+            if (currentQuestionIndex < quizData.length) {
+                showQuestion();
+            } else {
+                showResults();
+            }
+        });
+
+        restartBtn.addEventListener('click', () => {
+            resultsScreen.classList.add('hidden');
+            quizContainer.classList.add('hidden');
+            leaderboard.classList.add('hidden');
+            startScreen.classList.remove('hidden');
+            nameInput.value = ''; // Clear name input
+        });
+        
+        startBtn.addEventListener('click', () => {
+            userName = nameInput.value.trim();
+            if (userName) {
+                nameError.innerText = '';
+                startQuiz();
+            } else {
+                nameError.innerText = 'Por favor, digite seu nome para continuar.';
+            }
+        });
+
+        // Initial Load
+        // The app now waits for a name to be entered.
+        // loadLeaderboard is called once auth is ready.
+    </script>
+</body>
+</html>
+
